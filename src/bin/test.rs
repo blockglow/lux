@@ -5,17 +5,15 @@ use core::panic::PanicInfo;
 
 use libc::sleep;
 
-use lux::gfx::make_vk_surface;
-use lux::gfx::vk::Context;
+use lux::gfx::make_platform_renderer;
 use lux::prelude::*;
 
 #[no_mangle]
 pub fn main() {
-        let surface = make_vk_surface();
-        let ctx = Context::acquire(&*surface);
+        let mut renderer = make_platform_renderer();
         loop {
                 info!("deez");
-                surface.update();
+                renderer.render();
                 unsafe { sleep(1); }
         }
 }
