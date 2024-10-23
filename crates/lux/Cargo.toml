@@ -1,0 +1,13 @@
+[package]
+name = "lux"
+version = "0.1.0"
+edition = "2021"
+
+
+[unstable]
+build-std = ["core", "alloc"]
+
+[features]
+
+[dependencies]
+libc = "*"
