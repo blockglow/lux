@@ -11,3 +11,4 @@ build-std = ["core", "alloc"]
 
 [dependencies]
 libc = "*"
+libm = "*"

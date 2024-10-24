@@ -5,7 +5,8 @@
 
 layout(buffer_reference, buffer_reference_align = 4, scalar) buffer Global
 {
-    vec3 colors;
+    mat4 proj;
+    mat4 view;
 };
 
 layout(push_constant, scalar) uniform Registers
@@ -14,20 +15,28 @@ layout(push_constant, scalar) uniform Registers
 } registers;
 layout(location = 0) out vec3 fragColor;
 
-vec2 positions[3] = vec2[](
-vec2(0.0, -0.5),
+vec2 positions[6] = vec2[](
+// First triangle
+vec2(-0.5, -0.5),
+vec2(0.5, -0.5),
 vec2(0.5, 0.5),
-vec2(-0.5, 0.5)
+// Second triangle
+vec2(0.5, 0.5),
+vec2(-0.5, 0.5),
+vec2(-0.5, -0.5)
 );
 
-vec3 colors[3] = vec3[](
+vec3 colors[6] = vec3[](
+vec3(1.0, 0.0, 0.0),
+vec3(0.0, 1.0, 0.0),
+vec3(0.0, 0.0, 1.0),
 vec3(1.0, 0.0, 0.0),
 vec3(0.0, 1.0, 0.0),
 vec3(0.0, 0.0, 1.0)
 );
 
 void main() {
-    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
     Global global = Global(registers.global);
-    fragColor = global.colors;
+    gl_Position = global.proj * global.view * vec4(positions[gl_VertexIndex], 10.0, 1.0);
+    fragColor = vec3(1.0, 1.0, 0.0);
 }
