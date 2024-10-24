@@ -1,62 +1,71 @@
 #![feature(allocator_api, try_blocks, iterator_try_collect, generic_const_exprs)]
 #![feature(iter_chain)]
+#![feature(let_chains)]
 #![no_std]
 
 extern crate alloc as core_alloc;
 pub mod input;
 pub mod math;
+pub mod time;
+pub mod voxel;
+pub mod ecs;
 
 pub mod prelude {
-    pub use core::{iter, mem, ptr, slice};
-    pub use core::ffi::*;
-    pub use core::result::*;
-    pub use core_alloc::vec;
+	pub use core::{iter, mem, ops, ptr, slice};
+	pub use core::any::*;
+	pub use core::ffi::*;
+	pub use core::result::*;
+	pub use core_alloc::vec;
 
-    pub use crate::boxed::*;
-    pub use crate::collections::*;
-    pub use crate::env::{dbg, error, info, trace, warn};
-    pub use crate::ffi::*;
-    pub use crate::fmt::*;
-    pub use crate::math::*;
-    pub use crate::string::*;
-    pub use crate::vec::*;
-    pub use crate::ver::*;
+	pub use lux_macro::*;
 
-    pub fn default<T: Default>() -> T {
+	pub use crate::boxed::*;
+	pub use crate::collections::*;
+	pub use crate::ecs::*;
+	pub use crate::env::{dbg, error, info, trace, warn};
+	pub use crate::ffi::*;
+	pub use crate::fmt::*;
+	pub use crate::math::*;
+	pub use crate::string::*;
+	pub use crate::time::*;
+	pub use crate::vec::*;
+	pub use crate::ver::*;
+
+	pub fn default<T: Default>() -> T {
         Default::default()
     }
 }
 
 mod fmt {
-    pub use core_alloc::fmt;
-    pub use core_alloc::format;
+	pub use core_alloc::fmt;
+	pub use core_alloc::format;
 }
 
 mod collections {
-    pub use core_alloc::collections::*;
+	pub use core_alloc::collections::*;
 }
 
 mod vec {
-    pub use core_alloc::vec::*;
+	pub use core_alloc::vec::*;
 }
 
 mod string {
-    pub use core_alloc::string::*;
+	pub use core_alloc::string::*;
 }
 
 mod boxed {
-    pub use core_alloc::boxed::*;
+	pub use core_alloc::boxed::*;
 }
 
 mod ffi {
-    pub use core_alloc::ffi::*;
+	pub use core_alloc::ffi::*;
 }
 
 mod alloc {
-    use core::alloc;
-    use core::alloc::Layout;
+	use core::alloc;
+	use core::alloc::Layout;
 
-    pub struct Allocator;
+	pub struct Allocator;
 
     #[cfg(target_os = "linux")]
     unsafe impl alloc::GlobalAlloc for Allocator {
@@ -74,11 +83,11 @@ mod alloc {
 }
 
 pub mod env {
-    use core::str::FromStr;
+	use core::str::FromStr;
 
-    pub use crate::prelude::*;
+	pub use crate::prelude::*;
 
-    pub struct Console;
+	pub struct Console;
 
     impl Console {
         pub fn log(level: Level, msg: &str) {
@@ -162,38 +171,39 @@ pub mod env {
 
 
 pub mod gfx {
-    use core::ffi::c_void;
+	use core::ffi::c_void;
 
-    use vk::renderer;
+	use vk::renderer;
 
-    use crate::math::Matrix;
-    use crate::prelude::*;
+	use crate::math::Matrix;
+	use crate::prelude::*;
+	use crate::voxel::Volume;
 
-    #[cfg(target_os = "linux")]
+	#[cfg(target_os = "linux")]
     pub mod vk {
 
         pub mod include {
-            pub use crate::prelude::*;
+	        pub use crate::prelude::*;
 
-            pub use super::buffer::*;
-            pub use super::cmd;
-            pub use super::command::*;
-            pub use super::descriptor::*;
-            pub use super::device::*;
-            pub use super::ffi::*;
-            pub use super::image::*;
-            pub use super::instance::*;
-            pub use super::memory::*;
-            pub use super::physical_device::*;
-            pub use super::pipeline_layout::*;
-            pub use super::qfi::*;
-            pub use super::renderer::*;
-            pub use super::shader::*;
-            pub use super::staging::*;
-            pub use super::surface::*;
-            pub use super::swapchain::*;
-            pub use super::sync::*;
-            pub use super::util::*;
+	        pub use super::buffer::*;
+	        pub use super::cmd;
+	        pub use super::command::*;
+	        pub use super::descriptor::*;
+	        pub use super::device::*;
+	        pub use super::ffi::*;
+	        pub use super::image::*;
+	        pub use super::instance::*;
+	        pub use super::memory::*;
+	        pub use super::physical_device::*;
+	        pub use super::pipeline_layout::*;
+	        pub use super::qfi::*;
+	        pub use super::renderer::*;
+	        pub use super::shader::*;
+	        pub use super::staging::*;
+	        pub use super::surface::*;
+	        pub use super::swapchain::*;
+	        pub use super::sync::*;
+	        pub use super::util::*;
         }
 
         mod buffer;
@@ -220,14 +230,14 @@ pub mod gfx {
 
     #[cfg(target_os = "linux")]
     mod x11 {
-        use core::ffi::c_void;
-        use core::ptr;
+	    use core::ffi::c_void;
+	    use core::ptr;
 
-        use libc::c_char;
+	    use libc::c_char;
 
-        use crate::gfx::{Surface, SurfaceHandle};
+	    use crate::gfx::{Surface, SurfaceHandle};
 
-        pub struct Window {
+	    pub struct Window {
             display: *const c_void,
             window: *const c_void,
         }
@@ -343,6 +353,7 @@ pub mod gfx {
             Self: Sized;
         fn render(&mut self);
         fn camera(&mut self) -> &mut Camera;
+	    fn set_voxels(&mut self, id: u64, voxels: Box<dyn Volume>);
     }
 
     #[derive(Default, Clone, Copy)]

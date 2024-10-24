@@ -50,6 +50,37 @@ pub trait Number: Math + Copy + PartialEq {
 	fn whole(num: usize) -> Self where Self: Sized;
 }
 
+impl Math for usize {
+	fn add(self, rhs: Self) -> Self {
+		self + rhs
+	}
+
+	fn mul(self, rhs: Self) -> Self {
+		self * rhs
+	}
+}
+
+impl Number for usize {
+	fn zero() -> Self
+	where
+		Self: Sized,
+	{
+		0
+	}
+	fn one() -> Self
+	where
+		Self: Sized,
+	{
+		1
+	}
+	fn whole(num: usize) -> Self
+	where
+		Self: Sized,
+	{
+		num
+	}
+}
+
 pub trait Epsilon {
 	fn epsilon() -> Self where Self: Sized;
 }
@@ -231,6 +262,16 @@ impl<const N: usize, T: Number> VectorMath<N, T> for [T; N] {
 #[derive(Clone, Copy, Debug)]
 #[repr(transparent)]
 pub struct Vector<const N: usize, T = f32>(pub [T; N]);
+
+impl<const N: usize, T: Number> Vector<N, T> {
+	pub fn resultant(&self) -> T {
+		let mut x = T::zero();
+		for i in self.0 {
+			x = x.add(i);
+		}
+		x
+	}
+}
 
 impl<const N: usize, T: Number + Negate> Neg for Vector<N, T> {
 	type Output = Self;
@@ -776,4 +817,14 @@ impl core::ops::MulAssign for Quaternion {
 	fn mul_assign(&mut self, rhs: Self) {
 		*self = self.mul(rhs);
 	}
+}
+
+pub struct Translation<T = f32>(Vector<3, T>);
+
+pub struct Scale<T = f32>(Vector<3, T>);
+
+pub struct Transform {
+	translation: Translation,
+	rotation: Quaternion,
+	scale: Scale
 }

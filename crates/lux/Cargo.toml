@@ -12,3 +12,4 @@ build-std = ["core", "alloc"]
 [dependencies]
 libc = "*"
 libm = "*"
+lux-macro = { path = "../lux-macro" }

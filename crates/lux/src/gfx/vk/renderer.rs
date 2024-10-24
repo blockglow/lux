@@ -3,6 +3,7 @@ use core::iter;
 use crate::gfx::{Camera, Renderer as GfxRenderer, Surface as GfxSurface};
 use crate::gfx::vk::instance::Instance;
 use crate::prelude::*;
+use crate::voxel::Volume;
 
 use super::include::*;
 
@@ -306,5 +307,9 @@ impl GfxRenderer for Renderer {
 
     fn camera(&mut self) -> &mut Camera {
         &mut self.camera
+    }
+
+    fn set_voxels(&mut self, id: u64, voxels: Box<dyn Volume>) {
+        todo!()
     }
 }
