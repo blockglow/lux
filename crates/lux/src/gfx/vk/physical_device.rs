@@ -3,7 +3,7 @@ use crate::prelude::*;
 use super::include::*;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct PhysicalDevice(*const c_void);
 impl Default for PhysicalDevice {
     fn default() -> Self {
@@ -11,13 +11,14 @@ impl Default for PhysicalDevice {
     }
 }
 impl PhysicalDevice {
-    pub(crate) fn acquire_best(instance: Instance) -> Result<Self, Error> {
+    pub(crate) fn acquire_best(instance: ResMut<Instance>) -> Insert<PhysicalDevice> {
         let mut count = 8;
         let mut physical_devices = vec![PhysicalDevice::default(); count as usize];
 
         VkResult::handle(unsafe {
-            vkEnumeratePhysicalDevices(instance, &mut count, physical_devices.as_mut_ptr())
-        })?;
+            vkEnumeratePhysicalDevices(*instance, &mut count, physical_devices.as_mut_ptr())
+        })
+        .unwrap();
 
         physical_devices.truncate(count as usize);
 
@@ -52,7 +53,7 @@ impl PhysicalDevice {
         let (physical_device, physical_device_name) = rank.pop_last().map(|(_, x)| x).unwrap();
         info!("Using GPU: \"{physical_device_name}\"");
 
-        Ok(physical_device)
+        physical_device.into()
     }
 }
 #[repr(C)]

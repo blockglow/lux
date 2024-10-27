@@ -13,3 +13,4 @@ build-std = ["core", "alloc"]
 libc = "*"
 libm = "*"
 lux-macro = { path = "../lux-macro" }
+typeid = "1.0.2"

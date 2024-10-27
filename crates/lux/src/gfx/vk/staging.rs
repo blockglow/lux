@@ -9,6 +9,7 @@ pub struct StagedWrite {
     size: DeviceSize,
 }
 
+#[derive(Resource)]
 pub struct StagingBuffer {
     buffer: Buffer,
     memory: Memory,
@@ -20,14 +21,18 @@ pub struct StagingBuffer {
 }
 
 impl StagingBuffer {
-    pub(crate) fn create(physical_device: PhysicalDevice, device: Device, size: u64) -> Self {
-        let buffer = Buffer::create(device, size, BufferUsageFlagBits::TransferSrc as u32);
+    pub(crate) fn create(
+        physical_device: ResMut<PhysicalDevice>,
+        device: ResMut<Device>,
+    ) -> Insert<Self> {
+        let size = 1_000_000;
+        let buffer = Buffer::create(*device, size, BufferUsageFlagBits::TransferSrc as u32);
 
-        let req = buffer.requirements(device);
+        let req = buffer.requirements(*device);
 
-        let memory = Memory::host(physical_device, device, req).bind_buffer(device, buffer);
+        let memory = Memory::host(*physical_device, *device, req).bind_buffer(*device, buffer);
 
-        Self {
+        (Self {
             buffer,
             memory,
             size,
@@ -35,7 +40,8 @@ impl StagingBuffer {
             last_write: 0,
             writes: vec![],
             waiting: vec![],
-        }
+        })
+        .into()
     }
     pub(crate) fn write<T: Copy>(&mut self, buffer: Buffer, offset: u64, data: T) {
         let data = unsafe {
@@ -76,13 +82,7 @@ impl StagingBuffer {
             }],
         );
         for write in self.writes.drain(..) {
-            cmd.copy_buffer(
-                self.buffer,
-                write.buffer,
-                write.from,
-                write.to,
-                write.size,
-            );
+            cmd.copy_buffer(self.buffer, write.buffer, write.from, write.to, write.size);
         }
         if self.cursor >= self.size {
             self.cursor = 0;

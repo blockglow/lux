@@ -19,7 +19,6 @@ pub enum CommandBufferLevel {
     Secondary = 1,
 }
 
-
 #[derive(Clone, Copy, Debug)]
 pub struct BufferBarrier {
     pub src_access: AccessFlags,
@@ -28,7 +27,6 @@ pub struct BufferBarrier {
     pub offset: DeviceSize,
     pub size: DeviceSize,
 }
-
 
 pub type CommandPoolCreateFlags = u32;
 
@@ -43,6 +41,17 @@ pub struct CommandPoolCreateInfo {
 #[derive(Clone, Copy)]
 pub struct CommandBuffer(*const c_void);
 
+#[derive(Resource)]
+pub struct CommandBuffers(Vec<CommandBuffer>);
+
+impl ops::Deref for CommandBuffers {
+    type Target = [CommandBuffer];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_slice()
+    }
+}
+
 impl Default for CommandBuffer {
     fn default() -> Self {
         Self(ptr::null())
@@ -51,26 +60,25 @@ impl Default for CommandBuffer {
 
 impl CommandBuffer {
     pub(crate) fn allocate(
-        device: Device,
-        command_pool: CommandPool,
-        command_buffer_count: u32,
-    ) -> Result<Vec<Self>, Error> {
+        device: ResMut<Device>,
+        command_pool: ResMut<CommandPool>,
+    ) -> Insert<CommandBuffers> {
         let alloc_info = CommandBufferAllocateInfo {
             s_type: StructureType::CommandBufferAllocateInfo,
             p_next: ptr::null(),
-            command_pool,
+            command_pool: *command_pool,
             level: CommandBufferLevel::Primary,
-            command_buffer_count,
+            command_buffer_count: 4,
         };
 
         let mut command_buffers = vec![CommandBuffer::default(); 4];
         VkResult::handle(unsafe {
-            vkAllocateCommandBuffers(device, &alloc_info, command_buffers.as_mut_ptr())
-        })?;
+            vkAllocateCommandBuffers(*device, &alloc_info, command_buffers.as_mut_ptr())
+        })
+        .unwrap();
 
-        Ok(command_buffers)
+        CommandBuffers(command_buffers).into()
     }
-
 
     pub(crate) fn begin(self) {
         let info = CommandBufferBeginInfo {
@@ -115,10 +123,7 @@ impl CommandBuffer {
             view_mask: 0,
             color_attachment_count: color.len() as u32,
             p_color_attachments: color.as_ptr(),
-            p_depth_attachment: depth
-                .as_ref()
-                .map(|x| x as *const _)
-                .unwrap_or(ptr::null()),
+            p_depth_attachment: depth.as_ref().map(|x| x as *const _).unwrap_or(ptr::null()),
             p_stencil_attachment: stencil
                 .as_ref()
                 .map(|x| x as *const _)
@@ -147,11 +152,7 @@ impl CommandBuffer {
         unsafe { vkCmdEndRendering(self) };
     }
 
-    pub fn push_constant<T: Copy>(
-        self,
-        layout: PipelineLayout,
-        push: PushConstant<T>,
-    ) {
+    pub fn push_constant<T: Copy>(self, layout: PipelineLayout, push: PushConstant<T>) {
         unsafe {
             vkCmdPushConstants(
                 self,
@@ -276,12 +277,7 @@ impl CommandBuffer {
         };
     }
 
-    pub(crate) fn draw_settings(
-        self,
-        device: Device,
-        width: u32,
-        height: u32,
-    ) {
+    pub(crate) fn draw_settings(self, device: Device, width: u32, height: u32) {
         unsafe {
             vkCmdSetViewportWithCount(
                 self,
@@ -331,9 +327,7 @@ impl CommandBuffer {
                     VK_CMD_SET_RASTERIZATION_SAMPLES_EXT,
                 ))
             };
-            unsafe {
-                (vkCmdSetRasterizationSamplesEXT)(self, SampleCountFlagBits::_1 as u32)
-            };
+            unsafe { (vkCmdSetRasterizationSamplesEXT)(self, SampleCountFlagBits::_1 as u32) };
 
             let vkCmdSetSampleMaskEXT = unsafe {
                 mem::transmute::<_, vkCmdSetSampleMaskEXT>(load_device_fn(
@@ -384,7 +378,7 @@ impl CommandBuffer {
                         dst_alpha_blend_factor: BlendFactor::Zero,
                         alpha_blend_op: BlendOp::Add,
                     }]
-                        .as_ptr(),
+                    .as_ptr(),
                 )
             };
 
@@ -403,7 +397,7 @@ impl CommandBuffer {
                         | ColorComponentFlagBits::G as u32
                         | ColorComponentFlagBits::B as u32
                         | ColorComponentFlagBits::A as u32]
-                        .as_ptr(),
+                    .as_ptr(),
                 )
             };
         }
@@ -422,7 +416,7 @@ pub enum CommandPoolCreateFlagBits {
     Protected = 0x00000004,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct CommandPool(*const c_void);
 
 impl Default for CommandPool {
@@ -431,20 +425,24 @@ impl Default for CommandPool {
     }
 }
 impl CommandPool {
-    pub(crate) fn new(device: Device, queue_family_index: QueueFamilyIndex) -> Result<Self, Error> {
+    pub(crate) fn new(
+        device: ResMut<Device>,
+        queue_family_index: ResMut<QueueFamilyIndex>,
+    ) -> Insert<Self> {
         let command_pool_info = CommandPoolCreateInfo {
             s_type: StructureType::CommandPoolCreateInfo,
             p_next: ptr::null(),
             flags: CommandPoolCreateFlagBits::ResetCommandBuffer as u32,
-            queue_family_index,
+            queue_family_index: *queue_family_index,
         };
 
         let mut command_pool = default();
         VkResult::handle(unsafe {
-            vkCreateCommandPool(device, &command_pool_info, ptr::null(), &mut command_pool)
-        })?;
+            vkCreateCommandPool(*device, &command_pool_info, ptr::null(), &mut command_pool)
+        })
+        .unwrap();
 
-        Ok(command_pool)
+        command_pool.into()
     }
 }
 
@@ -455,7 +453,7 @@ impl Buffer {
             p_next: ptr::null(),
             flags: 0,
             size,
-            usage: usage | BufferUsageFlagBits::ShaderDeviceAddress as u32,
+            usage,
             sharing_mode: SharingMode::Exclusive,
             queue_family_index_count: 0,
             p_queue_family_indices: ptr::null(),

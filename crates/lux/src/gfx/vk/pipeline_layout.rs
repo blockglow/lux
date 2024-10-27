@@ -1,7 +1,7 @@
 use super::include::*;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct PipelineLayout(*const c_void);
 
 impl Default for PipelineLayout {
@@ -11,13 +11,16 @@ impl Default for PipelineLayout {
 }
 
 impl PipelineLayout {
-    pub(crate) fn new(device: Device, descriptor_set_layout: DescriptorSetLayout) -> Self {
+    pub(crate) fn new(
+        device: ResMut<Device>,
+        descriptor_set_layout: ResMut<DescriptorSetLayout>,
+    ) -> Insert<Self> {
         let info = PipelineLayoutCreateInfo {
             s_type: StructureType::PipelineLayoutCreateInfo,
             p_next: ptr::null(),
             flags: 0,
             set_layout_count: 1,
-            p_set_layouts: &descriptor_set_layout,
+            p_set_layouts: &*descriptor_set_layout,
             push_constant_range_count: 1,
             p_push_constant_ranges: &PushConstantRange {
                 stage: ShaderStageFlagBits::All as u32,
@@ -27,8 +30,8 @@ impl PipelineLayout {
         };
 
         let mut layout = Self::default();
-        unsafe { vkCreatePipelineLayout(device, &info, ptr::null(), &mut layout) };
-        layout
+        unsafe { vkCreatePipelineLayout(*device, &info, ptr::null(), &mut layout) };
+        layout.into()
     }
 }
 

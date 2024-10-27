@@ -345,7 +345,10 @@ impl VkResult {
     pub(crate) fn handle(r: VkResult) -> Result<(), Error> {
         match r {
             VkResult::Success => Ok(()),
-            e => Err(Error::Unknown),
+            e => {
+                dbg!(e);
+                Err(Error::Unknown)
+            }
         }
     }
 }
@@ -546,7 +549,7 @@ pub enum StructureType {
     DeviceQueueInfo = 2,
     DeviceInfo = 3,
     SubmitInfo = 4,
-    MemoryAllocateInfo = 6,
+    MemoryAllocateInfo = 5,
     FenceCreateInfo = 8,
     SemaphoreCreateInfo = 9,
     BufferCreateInfo = 12,

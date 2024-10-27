@@ -4,6 +4,53 @@ use crate::prelude::*;
 
 use super::include::*;
 
+#[derive(Resource)]
+pub struct StandardShaders {
+    pub(crate) vertex: Shader,
+    pub(crate) fragment: Shader,
+}
+
+impl StandardShaders {
+    pub(crate) fn compile(
+        device: ResMut<Device>,
+        descriptor_set_layout: Res<DescriptorSetLayout>,
+    ) -> Insert<Self> {
+        let vertex = include_bytes!("../../../../../assets/shader/vertex.spirv").to_vec();
+        let fragment = include_bytes!("../../../../../assets/shader/fragment.spirv").to_vec();
+        let shader_specs = vec![
+            ShaderSpec {
+                flags: 0,
+                source: ShaderSource(vertex),
+                stage: ShaderStageFlagBits::Vertex as u32,
+                next_stage: ShaderStageFlagBits::Fragment as u32,
+                push_constant_range: PushConstantRange {
+                    stage: ShaderStageFlagBits::All as u32,
+                    offset: 0,
+                    size: 64,
+                },
+                entry: "main".to_string(),
+            },
+            ShaderSpec {
+                flags: 0,
+                source: ShaderSource(fragment),
+                stage: ShaderStageFlagBits::Fragment as u32,
+                next_stage: 0,
+                push_constant_range: PushConstantRange {
+                    stage: ShaderStageFlagBits::All as u32,
+                    offset: 0,
+                    size: 64,
+                },
+                entry: "main".to_string(),
+            },
+        ];
+        let mut shaders =
+            Shader::compile(*device, &[*descriptor_set_layout], shader_specs).unwrap();
+        let fragment = shaders.pop().unwrap();
+        let vertex = shaders.pop().unwrap();
+        (Self { vertex, fragment }).into()
+    }
+}
+
 pub struct ShaderSource(pub Vec<u8>);
 
 #[repr(C)]

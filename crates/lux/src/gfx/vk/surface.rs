@@ -1,10 +1,10 @@
-use crate::gfx::{Surface as GfxSurface, SurfaceHandle};
+use crate::gfx::{ActiveSurface, SurfaceHandle};
 use crate::prelude::*;
 
 use super::include::*;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct Surface(*const c_void);
 impl Default for Surface {
     fn default() -> Self {
@@ -12,7 +12,8 @@ impl Default for Surface {
     }
 }
 impl Surface {
-    pub(crate) fn open(instance: Instance, gfx: &dyn GfxSurface) -> Result<Self, Error> {
+    pub(crate) fn open(instance: ResMut<Instance>, gfx: ResMut<ActiveSurface>) -> Insert<Surface> {
+        dbg!(&instance);
         let SurfaceHandle::Linux { window, display } = gfx.handle() else {
             panic!("wrong platform for vulkan");
         };
@@ -27,10 +28,18 @@ impl Surface {
 
         let mut surface = Surface::default();
         VkResult::handle(unsafe {
-            vkCreateXlibSurfaceKHR(instance, &surface_info, ptr::null(), &mut surface)
-        })?;
+            vkCreateXlibSurfaceKHR(*instance, &surface_info, ptr::null(), &mut surface)
+        })
+        .unwrap();
 
-        Ok(surface)
+        surface.into()
+    }
+    pub(crate) fn capabilities(self, physical_device: PhysicalDevice) -> SurfaceCapabilitiesKHR {
+        let mut capabilities = unsafe { mem::zeroed::<SurfaceCapabilitiesKHR>() };
+        unsafe {
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, self, &mut capabilities)
+        };
+        capabilities
     }
 }
 

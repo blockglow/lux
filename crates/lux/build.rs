@@ -2,7 +2,6 @@ use std::process::Command;
 
 pub fn main() {
     println!("cargo::rustc-link-lib=X11");
-    println!("cargo::rustc-link-lib=c");
     println!("cargo::rustc-link-lib=vulkan");
     println!("cargo::rerun-if-changed=src/shader/*");
     Command::new("glslc")

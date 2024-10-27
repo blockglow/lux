@@ -1,3 +1,6 @@
+use std::alloc::Global;
+use std::ops::Deref;
+
 use crate::prelude::*;
 
 use super::include::*;
@@ -54,5 +57,41 @@ pub struct BufferCreateInfo {
 impl Default for Buffer {
     fn default() -> Self {
         Self(ptr::null())
+    }
+}
+
+#[derive(Clone, Copy, Resource)]
+pub struct GlobalBuffer {
+    buffer: Buffer,
+    memory: Memory,
+}
+
+impl Deref for GlobalBuffer {
+    type Target = Buffer;
+
+    fn deref(&self) -> &Self::Target {
+        &self.buffer
+    }
+}
+
+impl GlobalBuffer {
+    pub(crate) fn new(
+        physical_device: ResMut<PhysicalDevice>,
+        device: ResMut<Device>,
+    ) -> Insert<Self> {
+        let buffer = Buffer::create(
+            *device,
+            8192,
+            BufferUsageFlagBits::StorageBuffer as u32
+                | BufferUsageFlagBits::TransferDst as u32
+                | BufferUsageFlagBits::ShaderDeviceAddress as u32,
+        );
+
+        let req = buffer.requirements(*device);
+
+        let memory =
+            Memory::device_local(*physical_device, *device, req).bind_buffer(*device, buffer);
+
+        (Self { buffer, memory }).into()
     }
 }

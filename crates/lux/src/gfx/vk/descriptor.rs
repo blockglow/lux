@@ -1,8 +1,25 @@
+use core::ops::Deref;
+
 use crate::prelude::*;
 
 use super::include::*;
 
+#[derive(Resource)]
 pub struct DescriptorTable(BTreeMap<DescriptorType, u32>);
+
+impl Deref for DescriptorTable {
+    type Target = BTreeMap<DescriptorType, u32>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DescriptorTable {
+    pub(crate) fn new() -> Insert<Self> {
+        Self::default().into()
+    }
+}
 
 impl Default for DescriptorTable {
     fn default() -> Self {
@@ -31,31 +48,35 @@ impl Default for DescriptorSet {
     }
 }
 
+#[derive(Resource)]
+pub struct DescriptorSets(Vec<DescriptorSet>);
+
 impl DescriptorSet {
     pub(crate) fn allocate(
-        device: Device,
-        descriptor_pool: DescriptorPool,
-        descriptor_set_layout: DescriptorSetLayout,
-    ) -> Result<Vec<Self>, Error> {
-        let set_layouts = vec![descriptor_set_layout; 4];
+        device: ResMut<Device>,
+        descriptor_pool: ResMut<DescriptorPool>,
+        descriptor_set_layout: ResMut<DescriptorSetLayout>,
+    ) -> Insert<DescriptorSets> {
+        let set_layouts = vec![*descriptor_set_layout; 4];
         let alloc_info = DescriptorSetAllocateInfo {
             s_type: StructureType::DescriptorSetAllocateInfo,
             p_next: ptr::null(),
-            descriptor_pool,
+            descriptor_pool: *descriptor_pool,
             descriptor_set_count: 4,
             p_set_layouts: set_layouts.as_ptr(),
         };
 
         let mut descriptor_sets = vec![DescriptorSet::default(); 4];
         VkResult::handle(unsafe {
-            vkAllocateDescriptorSets(device, &alloc_info, descriptor_sets.as_mut_ptr())
-        })?;
+            vkAllocateDescriptorSets(*device, &alloc_info, descriptor_sets.as_mut_ptr())
+        })
+        .unwrap();
 
-        Ok(descriptor_sets)
+        DescriptorSets(descriptor_sets).into()
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct DescriptorPool(*const c_void);
 
 impl Default for DescriptorPool {
@@ -64,10 +85,7 @@ impl Default for DescriptorPool {
     }
 }
 impl DescriptorPool {
-    pub(crate) fn bindless(
-        device: Device,
-        DescriptorTable(table): &DescriptorTable,
-    ) -> Result<Self, Error> {
+    pub(crate) fn bindless(device: ResMut<Device>, table: Res<DescriptorTable>) -> Insert<Self> {
         let pool_sizes = table
             .iter()
             .map(|(&ty, &descriptor_count)| DescriptorPoolSize {
@@ -91,13 +109,14 @@ impl DescriptorPool {
         let mut descriptor_pool = Self::default();
         VkResult::handle(unsafe {
             vkCreateDescriptorPool(
-                device,
+                *device,
                 &descriptor_pool_info,
                 ptr::null(),
                 &mut descriptor_pool,
             )
-        })?;
-        Ok(descriptor_pool)
+        })
+        .unwrap();
+        descriptor_pool.into()
     }
 }
 
@@ -192,7 +211,7 @@ pub enum DescriptorSetLayoutCreateFlagBits {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct DescriptorSetLayout(*const c_void);
 
 impl Default for DescriptorSetLayout {
@@ -201,10 +220,7 @@ impl Default for DescriptorSetLayout {
     }
 }
 impl DescriptorSetLayout {
-    pub(crate) fn bindless(
-        device: Device,
-        DescriptorTable(table): &DescriptorTable,
-    ) -> Result<Self, Error> {
+    pub(crate) fn bindless(device: ResMut<Device>, table: ResMut<DescriptorTable>) -> Insert<Self> {
         let bindings = table
             .iter()
             .enumerate()
@@ -250,12 +266,13 @@ impl DescriptorSetLayout {
         let mut descriptor_set_layout = Self::default();
         VkResult::handle(unsafe {
             vkCreateDescriptorSetLayout(
-                device,
+                *device,
                 &descriptor_set_layout_info,
                 ptr::null(),
                 &mut descriptor_set_layout,
             )
-        })?;
-        Ok(descriptor_set_layout)
+        })
+        .unwrap();
+        descriptor_set_layout.into()
     }
 }

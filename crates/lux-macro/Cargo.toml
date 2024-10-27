@@ -9,4 +9,4 @@ proc-macro = true
 [dependencies]
 quote = "*"
 syn = { version = "*", features = ["full"] }
-
+proc-macro2 = "1.0.89"

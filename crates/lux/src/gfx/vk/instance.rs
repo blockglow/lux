@@ -30,7 +30,7 @@ pub struct InstanceCreateInfo {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource, Debug)]
 pub struct Instance(*const c_void);
 
 impl Default for Instance {
@@ -40,7 +40,8 @@ impl Default for Instance {
 }
 
 impl Instance {
-    pub(crate) fn new() -> Result<Self, Error> {
+    pub(crate) fn new() -> Insert<Instance> {
+        dbg!("Starting instance initialization");
         let app_name = CString::from_str("yo").unwrap();
         let engine_name = CString::from_str("yo").unwrap();
         let mut ext_instance: Vec<&str> = vec!["VK_KHR_surface"];
@@ -69,7 +70,8 @@ impl Instance {
             enabled_ext,
         };
         let mut instance = Self::default();
-        VkResult::handle(unsafe { vkCreateInstance(&instance_info, ptr::null(), &mut instance) })?;
-        Ok(instance)
+        VkResult::handle(unsafe { vkCreateInstance(&instance_info, ptr::null(), &mut instance) })
+            .unwrap();
+        instance.into()
     }
 }

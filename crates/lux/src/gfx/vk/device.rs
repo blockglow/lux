@@ -3,7 +3,7 @@ use crate::prelude::*;
 use super::include::*;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct Device(*const c_void);
 impl Default for Device {
     fn default() -> Self {
@@ -13,9 +13,9 @@ impl Default for Device {
 
 impl Device {
     pub(crate) fn new(
-        physical_device: PhysicalDevice,
-        surface: Surface,
-    ) -> Result<(Self, QueueFamilyIndex), Error> {
+        physical_device: ResMut<PhysicalDevice>,
+        surface: ResMut<Surface>,
+    ) -> (Insert<Device>, Insert<Queue>, Insert<QueueFamilyIndex>) {
         let ext_device: Vec<&str> = vec!["VK_KHR_swapchain", "VK_EXT_shader_object"];
 
         let buffer_device_address_features = PhysicalDeviceBufferDeviceAddressFeatures {
@@ -66,11 +66,14 @@ impl Device {
         let enabled_features = PhysicalDeviceFeatures2 {
             s_type: StructureType::PhysicalDeviceFeatures2,
             p_next: &indexing_features as *const _ as *const _,
-            features: PhysicalDeviceFeatures { ..default() },
+            features: PhysicalDeviceFeatures {
+                shader_int64: true as _,
+                ..default()
+            },
         };
 
         let queue_priorities = [1.0];
-        let queue_family_index = QueueFamilyIndex::graphics(physical_device, surface)?;
+        let queue_family_index = QueueFamilyIndex::graphics(*physical_device, *surface).unwrap();
         let queue_create_info = DeviceQueueCreateInfo {
             s_type: StructureType::DeviceQueueInfo,
             p_next: ptr::null(),
@@ -97,10 +100,13 @@ impl Device {
 
         let mut device = Device::default();
         VkResult::handle(unsafe {
-            vkCreateDevice(physical_device, &device_info, ptr::null(), &mut device)
-        })?;
+            vkCreateDevice(*physical_device, &device_info, ptr::null(), &mut device)
+        })
+        .unwrap();
 
-        Ok((device, queue_family_index))
+        let queue = queue_family_index.queue(device);
+
+        (device.into(), queue.into(), queue_family_index.into())
     }
 }
 
@@ -155,7 +161,7 @@ pub struct QueueFamilyProperties {
 pub type DeviceQueueCreateFlags = u32;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct Queue(*const c_void);
 
 impl Default for Queue {

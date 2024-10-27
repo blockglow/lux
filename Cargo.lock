@@ -22,12 +22,14 @@ dependencies = [
  "libc",
  "libm",
  "lux-macro",
+ "typeid",
 ]
 
 [[package]]
 name = "lux-macro"
 version = "0.1.0"
 dependencies = [
+ "proc-macro2",
  "quote",
  "syn",
 ]
@@ -60,6 +62,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "typeid"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e13db2e0ccd5e14a544e8a246ba2312cd25223f616442d7f2cb0e3db614236e"
 
 [[package]]
 name = "unicode-ident"

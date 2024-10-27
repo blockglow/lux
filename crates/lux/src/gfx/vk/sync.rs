@@ -1,3 +1,7 @@
+use std::ops::Index;
+
+use libc::if_indextoname;
+
 use crate::prelude::*;
 
 use super::include::*;
@@ -54,7 +58,7 @@ impl Fence {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct Semaphore(*const c_void);
 impl Default for Semaphore {
     fn default() -> Self {
@@ -69,7 +73,40 @@ impl Semaphore {
             flags: 0,
         };
         let mut semaphore = Self::default();
+        info!("YOOO");
         unsafe { vkCreateSemaphore(device, &info, ptr::null(), &mut semaphore) };
         Ok(semaphore)
+    }
+}
+
+pub struct FrameSyncHandles {
+    pub(crate) image_avail: Semaphore,
+    pub(crate) render_finish: Semaphore,
+    pub(crate) ready: Fence,
+}
+
+#[derive(Resource)]
+pub struct FrameSync(Vec<FrameSyncHandles>);
+
+impl FrameSync {
+    pub(crate) fn new(device: ResMut<Device>) -> Insert<Self> {
+        FrameSync(
+            iter::repeat_with(|| FrameSyncHandles {
+                image_avail: Semaphore::create(*device).unwrap(),
+                render_finish: Semaphore::create(*device).unwrap(),
+                ready: Fence::create_signaled(*device).unwrap(),
+            })
+            .take(4)
+            .collect(),
+        )
+        .into()
+    }
+}
+
+impl Index<usize> for FrameSync {
+    type Output = FrameSyncHandles;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
     }
 }

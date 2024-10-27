@@ -3,7 +3,7 @@ use crate::prelude::*;
 use super::include::*;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct QueueFamilyIndex(u32);
 
 impl QueueFamilyIndex {
